@@ -13,12 +13,21 @@ export type Result<T, E> = { status: "ok"; value: T } | { status: "error"; error
 
 // ok si activa Y total > 100. err("orden inactiva") o err("monto insuficiente").
 export function clasificarOrden(o: Orden): Result<Orden, string> {
-  throw new Error("TODO: implementar");
+  if (!o.activa){
+    return { status: "error", error: "orden inactiva" };
+  }
+  if (o.total <= 100){
+    return { status: "error", error: "monto insuficiente" };
+  }
+  return {status: "ok", value: o};
 }
 
 // Partial: retorna fn que crea nueva orden con total reducido por porcentaje.
 export function aplicarDescuento(porcentaje: number): (o: Orden) => Orden {
-  throw new Error("TODO: implementar");
+  return (o: Orden): Orden => ({
+    ...o,
+    total: o.total * (1 - porcentaje / 100),
+  });
 }
 
 // Pipeline: clasificar → separar ok/err → descuento 10% a aprobadas → sumar totales.
@@ -27,5 +36,24 @@ export function procesarOrdenes(ordenes: Orden[]): {
   rechazadas: string[];
   totalFinal: number;
 } {
-  throw new Error("TODO: implementar");
+  const diezPorciento = aplicarDescuento(10);
+  
+  // clasificamos todas las ordenes
+  const resultados= ordenes.map(clasificarOrden);
+
+  // filtramos  y transformamos las aprobadas
+  const aprobadas = resultados
+    .filter((r): r is { status: "ok"; value: Orden } => r.status === "ok")
+    .map(r => diezPorciento(r.value));
+
+  // extraemos los mensajes de las rechazadas
+  const rechazadas = resultados
+    .filter((r): r is { status: "error"; error: string } => r.status === "error")
+    .map(r => r.error);
+
+  //calculamos el total acumulado de las aprobadas(con descuento aplicado)
+  const totalFinal = aprobadas.reduce((acc, o) => acc + o.total, 0);
+
+  return { aprobadas, rechazadas, totalFinal };
+
 }
